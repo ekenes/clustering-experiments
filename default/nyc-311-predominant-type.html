@@ -1,0 +1,127 @@
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+
+    <title>
+      311 calls by incident type - predominance
+    </title>
+
+    <style>
+      html,
+      body,
+      #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/4.25/esri/themes/light/main.css"/>
+    <script src="https://js.arcgis.com/4.25/"></script>
+
+    <script type="text/javascript">
+      require([
+        "esri/WebMap",
+        "esri/views/MapView",
+        "esri/widgets/Legend",
+        "esri/widgets/Expand",
+        "esri/widgets/Home",
+        "esri/smartMapping/labels/clusters",
+        "esri/smartMapping/popup/clusters"
+      ], function (
+        WebMap,
+        MapView,
+        Legend,
+        Expand,
+        Home,
+        clusterLabelCreator,
+        clusterPopupCreator
+      ) {
+        (async () => {
+          const map = new WebMap({
+            portalItem: {
+              id: "433b5f7f524a4d1ebf3a9f8e1bd49ee0"
+            }
+          });
+
+          const view = new MapView({
+            container: "viewDiv",
+            map,
+            constraints: {
+              snapToZoom: false
+            }
+          });
+
+          await view.when();
+          const layer = view.map.layers.getItemAt(0);
+
+          layer
+            .when()
+            .then(generateClusterConfig)
+            .then((featureReduction) => {
+              layer.featureReduction = featureReduction;
+
+              const renderer = layer.renderer.clone()
+              renderer.legendOptions = {
+                title: "Predominant complaint"
+              };
+              layer.renderer = renderer;
+            })
+            .catch((error) => {
+              console.error(error);
+            });
+
+          async function generateClusterConfig(layer) {
+            // generates default popupTemplate
+            const popupTemplate = await clusterPopupCreator
+              .getTemplates({ layer })
+              .then(
+                (popupTemplateResponse) =>
+                  popupTemplateResponse.primaryTemplate.value
+              );
+
+            // generates default labelingInfo
+            const { labelingInfo, clusterMinSize } = await clusterLabelCreator
+              .getLabelSchemes({ layer, view })
+              .then((labelSchemes) => labelSchemes.primaryScheme);
+
+
+            return {
+              type: "cluster",
+              popupTemplate,
+              labelingInfo,
+              clusterMinSize
+            };
+          }
+
+          view.ui.add(
+            new Home({
+              view
+            }),
+            "top-left"
+          );
+
+          view.ui.add(
+            new Expand({
+              view: view,
+              content: new Legend({
+                view
+              }),
+              expandIconClass: "esri-icon-layer-list",
+              expanded: true
+            }),
+            "top-left"
+          );
+        })();
+      });
+    </script>
+  </head>
+  <body>
+    <div id="viewDiv"></div>
+  </body>
+</html>
